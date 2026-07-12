@@ -7,7 +7,9 @@ import type { DesktopSessionLocalError } from "../shared/session-continuation";
 import type {
   ImportWalletInput,
   ProfileWallet,
+  ProvisionWalletResult,
   WalletMutationResult,
+  WalletPortfolioResult,
   WalletSyncResult,
 } from "../shared/wallets";
 import type { TokenBalancesResponse } from "../shared/tokens";
@@ -873,6 +875,17 @@ const hermesAPI = {
   // Cloud wallets from the backend for the profile's linked agent.
   syncWallets: (profile?: string): Promise<WalletSyncResult> =>
     ipcRenderer.invoke("wallet-sync", profile),
+
+  // Backend-driven wallet ops (Office space representatives): token balances
+  // for a cloud wallet, and provisioning a cloud wallet for the linked agent.
+  getWalletPortfolio: (
+    profile: string | undefined,
+    walletId: string,
+  ): Promise<WalletPortfolioResult> =>
+    ipcRenderer.invoke("wallet-portfolio", profile, walletId),
+
+  provisionCloudWallet: (profile?: string): Promise<ProvisionWalletResult> =>
+    ipcRenderer.invoke("wallet-provision", profile),
 
   createWallet: (
     profile?: string,

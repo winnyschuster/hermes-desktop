@@ -6,7 +6,9 @@ import type { DesktopSessionLocalError } from "../shared/session-continuation";
 import type {
   ImportWalletInput,
   ProfileWallet,
+  ProvisionWalletResult,
   WalletMutationResult,
+  WalletPortfolioResult,
   WalletSyncResult,
 } from "../shared/wallets";
 import type { TokenBalancesResponse } from "../shared/tokens";
@@ -660,6 +662,11 @@ interface HermesAPI {
   ) => Promise<{ success: boolean; error?: string }>;
   listWallets: (profile?: string) => Promise<ProfileWallet[]>;
   syncWallets: (profile?: string) => Promise<WalletSyncResult>;
+  getWalletPortfolio: (
+    profile: string | undefined,
+    walletId: string,
+  ) => Promise<WalletPortfolioResult>;
+  provisionCloudWallet: (profile?: string) => Promise<ProvisionWalletResult>;
   createWallet: (
     profile?: string,
     name?: string,

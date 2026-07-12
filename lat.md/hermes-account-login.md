@@ -77,6 +77,14 @@ progress/code events to the renderer. The preload bridge surfaces these as
 `accountLogin`, `getAccount`, etc. on `window.hermesAPI` ([[src/preload/index.ts]]),
 typed with the shared shapes in [[src/shared/account.ts]].
 
+The account is device-wide, so the `-get` handler resolves it through
+[[src/main/account-store.ts#findAccountProfile]] rather than the active
+profile — switching agents must not read as signed out just because
+`account.json` lives under the profile that was active at sign-in. Likewise
+`-logout` calls [[src/main/account-store.ts#clearAllAccounts]], which sweeps
+every profile home holding an account file (two sign-ins on different
+profiles leave two), so signing out signs the whole device out.
+
 In the renderer, [[src/renderer/src/components/HermesAccountModal.tsx]] shows the
 `user_code` to confirm and reports the result, and
 [[src/renderer/src/screens/Providers/Providers.tsx]] hosts the "Hermes One
@@ -94,3 +102,9 @@ unavailable" guard. [[src/main/hermes-account.test.ts]] exercises
 [[src/main/hermes-account.ts#interpretTokenResponse]] across every RFC branch,
 the base-URL resolution order (runtime env → baked build-time value →
 localhost default), and the conditional `x-api-key` header.
+
+### Signs out everywhere
+
+With accounts saved under both the default home and a named profile,
+`clearAllAccounts` removes every one — afterwards `findAccountProfile` is null
+and both profiles read as signed out.

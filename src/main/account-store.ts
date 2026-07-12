@@ -144,3 +144,20 @@ export function clearAccount(profile?: string): void {
     // Best-effort — the token is encrypted at rest regardless.
   }
 }
+
+/**
+ * Sign out everywhere: the account is device-wide, so logout must remove
+ * `account.json` from whichever profile home(s) hold one — signing in on
+ * profile A and again on profile B leaves two files, and clearing only the
+ * active profile's would keep the device signed in. The seen-guard stops the
+ * sweep if a file can't be unlinked (clearAccount is best-effort).
+ */
+export function clearAllAccounts(): void {
+  const seen = new Set<string>();
+  let profile = findAccountProfile();
+  while (profile && !seen.has(profile)) {
+    seen.add(profile);
+    clearAccount(profile);
+    profile = findAccountProfile();
+  }
+}

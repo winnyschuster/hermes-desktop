@@ -125,4 +125,6 @@ export default {
     "Wallets are managed in your Hermes One account and appear here once this agent syncs.",
   walletSignInHint:
     "Sign in to your Hermes One account on the Providers page to see this agent's wallets.",
+  walletForeignHint:
+    "This agent is linked to a different Hermes One account, so its wallets stay untouched here.",
 } as const;

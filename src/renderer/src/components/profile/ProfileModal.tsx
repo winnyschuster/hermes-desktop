@@ -24,6 +24,7 @@ import type { MemoryData } from "../../screens/Memory/types";
 import { AppModal, AppModalTitle } from "../modal/AppModal";
 import ProfileWalletPane from "./ProfileWalletPane";
 import ProfileSyncPane from "./ProfileSyncPane";
+import type { ProfileSection } from "./ProfileModalContext";
 
 /** Mirrors the entry shape returned by `window.hermesAPI.listProfiles()`. */
 interface ProfileInfo {
@@ -52,15 +53,10 @@ export interface ProfileModalProps {
   onChanged?: () => void;
   /** Fired after the profile is deleted, before the modal closes. */
   onDeleted?: (name: string) => void;
+  /** Section to show when the modal opens; defaults to "profile". */
+  initialSection?: ProfileSection;
 }
 
-type ProfileSection =
-  | "profile"
-  | "persona"
-  | "agentMemory"
-  | "wallet"
-  | "sync"
-  | "advanced";
 type ProfileChipIcon = React.ComponentType<{
   size?: number;
   className?: string;
@@ -95,11 +91,19 @@ export default function ProfileModal({
   onExited,
   onChanged,
   onDeleted,
+  initialSection,
 }: ProfileModalProps): React.JSX.Element {
   const id = name;
   const { t } = useI18n();
   const [profile, setProfile] = useState<ProfileInfo | null>(null);
-  const [section, setSection] = useState<ProfileSection>("profile");
+  const [section, setSection] = useState<ProfileSection>(
+    initialSection ?? "profile",
+  );
+  // Re-apply on every open so a reused modal instance honours the opener's
+  // requested section (e.g. the bank ATM deep-links to "wallet").
+  useEffect(() => {
+    if (open) setSection(initialSection ?? "profile");
+  }, [open, initialSection]);
   const [error, setError] = useState("");
   const [memoryData, setMemoryData] = useState<MemoryData | null>(null);
   const [memoryLoading, setMemoryLoading] = useState(false);
