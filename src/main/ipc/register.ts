@@ -118,6 +118,7 @@ import {
   resolvePendingClarify,
 } from "../hermes";
 import {
+  freshDashboardWebSocketUrl,
   getDashboardStatus,
   startDashboard,
   stopDashboard,
@@ -1679,6 +1680,9 @@ export function registerIpcHandlers(context: IpcContext): void {
   // the current chat path while we validate the ordered event stream.
   ipcMain.handle("dashboard-status", (_event, profile?: string) =>
     getDashboardStatus(profile),
+  );
+  ipcMain.handle("fresh-dashboard-ws-url", (_event, profile?: string) =>
+    freshDashboardWebSocketUrl(profile),
   );
   ipcMain.handle("start-dashboard", (_event, profile?: string) =>
     startDashboard(profile),
