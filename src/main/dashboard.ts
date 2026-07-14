@@ -393,10 +393,11 @@ export async function getRemoteDashboardStatusForConfig(
   let connection: DashboardConnection | undefined;
   try {
     const detected = await probeRemoteAuthMode(baseUrl);
-    connection = remoteDashboardConnectionFromConfig(
-      { ...config, remoteAuthMode: detected.authMode },
-      profile,
-    ) ?? undefined;
+    connection =
+      remoteDashboardConnectionFromConfig(
+        { ...config, remoteAuthMode: detected.authMode },
+        profile,
+      ) ?? undefined;
 
     if (detected.authMode === "oauth") {
       if (!connection) throw new Error("Could not resolve remote OAuth URL.");

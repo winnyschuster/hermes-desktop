@@ -11,11 +11,15 @@ import { probeRemoteAuthMode } from "../src/main/remote-oauth";
 
 describe("remote authentication mode detection", () => {
   it("detects OAuth from the public dashboard status", async () => {
-    const fetchImpl = vi.fn(async () =>
-      new Response(JSON.stringify({ auth_required: true, version: "0.9.0" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ auth_required: true, version: "0.9.0" }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
     );
 
     await expect(
@@ -28,8 +32,9 @@ describe("remote authentication mode detection", () => {
   });
 
   it("detects token mode when the status is public and ungated", async () => {
-    const fetchImpl = vi.fn(async () =>
-      new Response(JSON.stringify({ auth_required: false }), { status: 200 }),
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ auth_required: false }), { status: 200 }),
     );
 
     await expect(
@@ -43,7 +48,9 @@ describe("remote authentication mode detection", () => {
       probeRemoteAuthMode("https://hermes.example", rejected),
     ).rejects.toThrow(/503/);
 
-    const malformed = vi.fn(async () => new Response("not json", { status: 200 }));
+    const malformed = vi.fn(
+      async () => new Response("not json", { status: 200 }),
+    );
     await expect(
       probeRemoteAuthMode("https://hermes.example", malformed),
     ).rejects.toThrow(/status/i);

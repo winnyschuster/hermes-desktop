@@ -203,10 +203,7 @@ export default function ConnectionPane(): React.JSX.Element {
             </div>
           ) : (
             <div className="settings-field">
-              <label
-                className="settings-field-label"
-                htmlFor="remote-api-key"
-              >
+              <label className="settings-field-label" htmlFor="remote-api-key">
                 {t("settings.remoteApiKey")}
               </label>
               <input

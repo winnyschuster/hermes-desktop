@@ -4,7 +4,11 @@ import { useSettingsData } from "./useSettingsData";
 
 vi.mock("../useI18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 
-function connectionConfig() {
+type PublicConnectionConfig = Awaited<
+  ReturnType<typeof window.hermesAPI.getConnectionConfig>
+>;
+
+function connectionConfig(): PublicConnectionConfig {
   return {
     mode: "remote" as const,
     remoteUrl: "https://hermes.example",

@@ -61,7 +61,10 @@ import {
   remoteOAuthSessionState,
 } from "../src/main/remote-oauth";
 
-function mockNetJsonResponse(statusCode: number, body: unknown): {
+function mockNetJsonResponse(
+  statusCode: number,
+  body: unknown,
+): {
   abort: ReturnType<typeof vi.fn>;
   setHeader: ReturnType<typeof vi.fn>;
   write: ReturnType<typeof vi.fn>;
@@ -115,9 +118,7 @@ describe("remote OAuth session boundary", () => {
         webSecurity: true,
       },
     });
-    expect(window.loadURL).toHaveBeenCalledWith(
-      "https://hermes.example/login",
-    );
+    expect(window.loadURL).toHaveBeenCalledWith("https://hermes.example/login");
 
     window.webContents.emit("did-navigate");
     await expect(login).resolves.toEqual({ signedIn: true });
@@ -191,18 +192,16 @@ describe("remote OAuth session boundary", () => {
 
   // @lat: [[remote-dashboard-oauth#Test specifications#Cookie session boundary]]
   it("recognizes access and refresh session cookies", () => {
-    expect(
-      cookiesHaveRemoteOAuthSession([{ name: "hermes_session_at" }]),
-    ).toBe(true);
-    expect(
-      cookiesHaveRemoteOAuthSession([{ name: "hermes_session_rt" }]),
-    ).toBe(true);
+    expect(cookiesHaveRemoteOAuthSession([{ name: "hermes_session_at" }])).toBe(
+      true,
+    );
+    expect(cookiesHaveRemoteOAuthSession([{ name: "hermes_session_rt" }])).toBe(
+      true,
+    );
     expect(
       cookiesHaveRemoteOAuthSession([{ name: "tenant_hermes_session_at" }]),
     ).toBe(true);
-    expect(cookiesHaveRemoteOAuthSession([{ name: "unrelated" }])).toBe(
-      false,
-    );
+    expect(cookiesHaveRemoteOAuthSession([{ name: "unrelated" }])).toBe(false);
   });
 
   it("uses a dedicated persistent Electron partition", async () => {

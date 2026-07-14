@@ -124,7 +124,9 @@ export async function probeRemoteAuthMode(
 export async function clearRemoteOAuthSession(baseUrl: string): Promise<void> {
   const normalized = normalizeRemoteOAuthBaseUrl(baseUrl);
   const oauthSession = getRemoteOAuthSession();
-  const cookies = await oauthSession.cookies.get({ url: normalized.toString() });
+  const cookies = await oauthSession.cookies.get({
+    url: normalized.toString(),
+  });
   await Promise.all(
     cookies.map((cookie) => {
       const cookieUrl = new URL(normalized.origin);
@@ -139,10 +141,7 @@ export async function clearRemoteOAuthSession(baseUrl: string): Promise<void> {
   );
 }
 
-export function buildRemoteOAuthWsUrl(
-  baseUrl: string,
-  ticket: string,
-): string {
+export function buildRemoteOAuthWsUrl(baseUrl: string, ticket: string): string {
   const normalized = normalizeRemoteOAuthBaseUrl(baseUrl);
   normalized.protocol = normalized.protocol === "https:" ? "wss:" : "ws:";
   normalized.pathname = "/api/ws";
@@ -236,7 +235,10 @@ export function requestRemoteOAuthJson(
           return;
         }
         const contentType = String(response.headers["content-type"] ?? "");
-        if (/^\s*<(?:!doctype|html)/i.test(text) || contentType.includes("text/html")) {
+        if (
+          /^\s*<(?:!doctype|html)/i.test(text) ||
+          contentType.includes("text/html")
+        ) {
           finish(
             new RemoteOAuthError(
               `Expected JSON from ${parsed.toString()} but received HTML.`,
@@ -340,8 +342,9 @@ export function openRemoteOAuthLogin(
     pollTimer.unref?.();
 
     loginWindow.webContents.on("did-navigate", () => void checkSession());
-    loginWindow.webContents.on("did-redirect-navigation", () =>
-      void checkSession(),
+    loginWindow.webContents.on(
+      "did-redirect-navigation",
+      () => void checkSession(),
     );
     loginWindow.webContents.on("did-frame-navigate", () => void checkSession());
     loginWindow.on("closed", () => {
@@ -356,15 +359,17 @@ export function openRemoteOAuthLogin(
     });
 
     const loginUrl = new URL("/login", normalized.origin).toString();
-    void loginWindow.loadURL(loginUrl).catch((error) =>
-      finish(
-        new RemoteOAuthError(
-          `Could not open remote gateway sign-in: ${error instanceof Error ? error.message : String(error)}`,
-          "oauth_request_failed",
-          undefined,
-          { cause: error },
+    void loginWindow
+      .loadURL(loginUrl)
+      .catch((error) =>
+        finish(
+          new RemoteOAuthError(
+            `Could not open remote gateway sign-in: ${error instanceof Error ? error.message : String(error)}`,
+            "oauth_request_failed",
+            undefined,
+            { cause: error },
+          ),
         ),
-      ),
-    );
+      );
   });
 }
