@@ -144,6 +144,7 @@ describe("remoteDashboardConnectionFromConfig", () => {
 });
 
 describe("OAuth remote dashboard status", () => {
+  // @lat: [[remote-dashboard-oauth#Test specifications#OAuth dashboard readiness]]
   it("reports browser login needed without attempting authenticated REST", async () => {
     oauthMocks.probeRemoteAuthMode.mockResolvedValue({
       authMode: "oauth",
@@ -209,6 +210,7 @@ describe("OAuth remote dashboard status", () => {
 });
 
 describe("freshDashboardWebSocketUrl", () => {
+  // @lat: [[remote-dashboard-oauth#Test specifications#Fresh ticket per connection]]
   it("mints a new OAuth ticket for every connection attempt", async () => {
     configMocks.getConnectionConfig.mockReturnValue(
       remoteConnection({ apiKey: "", remoteAuthMode: "oauth" }),

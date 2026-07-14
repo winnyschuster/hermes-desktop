@@ -189,6 +189,7 @@ describe("remote OAuth session boundary", () => {
     ).rejects.toThrow(/\/api\/auth\/ws-ticket/);
   });
 
+  // @lat: [[remote-dashboard-oauth#Test specifications#Cookie session boundary]]
   it("recognizes access and refresh session cookies", () => {
     expect(
       cookiesHaveRemoteOAuthSession([{ name: "hermes_session_at" }]),

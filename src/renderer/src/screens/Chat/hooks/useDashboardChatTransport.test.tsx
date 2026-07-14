@@ -179,6 +179,7 @@ describe("useDashboardChatTransport recovery", () => {
   });
 
   it("surfaces OAuth login requirements without legacy fallback", async () => {
+    // @lat: [[remote-dashboard-oauth#Test specifications#OAuth no-fallback]]
     const onUnavailable = vi.fn();
     Object.defineProperty(window, "hermesAPI", {
       configurable: true,

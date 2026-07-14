@@ -71,6 +71,7 @@ describe("useSettingsData remote OAuth", () => {
   });
 
   it("automatically detects OAuth and reads bounded session state", async () => {
+    // @lat: [[remote-dashboard-oauth#Test specifications#Settings authentication state]]
     const { result } = renderHook(() => useSettingsData());
 
     await waitFor(() => expect(result.current.remoteAuthMode).toBe("oauth"));
