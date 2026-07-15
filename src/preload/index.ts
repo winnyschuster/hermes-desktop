@@ -59,6 +59,7 @@ interface DashboardConnection {
   baseUrl: string;
   wsUrl: string;
   token: string;
+  authMode?: "token" | "oauth";
   mode: "local" | "remote" | "ssh";
   profile?: string;
   pid?: number;
@@ -73,6 +74,7 @@ interface DashboardStatus {
   connection?: DashboardConnection;
   error?: string;
   logPath?: string;
+  needsOAuthLogin?: boolean;
 }
 
 const electronAPI = {
@@ -311,6 +313,7 @@ const hermesAPI = {
   getConnectionConfig: (): Promise<{
     mode: "local" | "remote" | "ssh";
     remoteUrl: string;
+    remoteAuthMode: "auto" | "token" | "oauth";
     remoteChatTransport: "auto" | "dashboard" | "legacy";
     sshChatTransport: "auto" | "dashboard" | "legacy";
     hasApiKey: boolean;
@@ -346,6 +349,7 @@ const hermesAPI = {
     callback: (config: {
       mode: "local" | "remote" | "ssh";
       remoteUrl: string;
+      remoteAuthMode: "auto" | "token" | "oauth";
       remoteChatTransport: "auto" | "dashboard" | "legacy";
       sshChatTransport: "auto" | "dashboard" | "legacy";
       hasApiKey: boolean;
@@ -368,6 +372,7 @@ const hermesAPI = {
         config as {
           mode: "local" | "remote" | "ssh";
           remoteUrl: string;
+          remoteAuthMode: "auto" | "token" | "oauth";
           remoteChatTransport: "auto" | "dashboard" | "legacy";
           sshChatTransport: "auto" | "dashboard" | "legacy";
           hasApiKey: boolean;
@@ -407,6 +412,20 @@ const hermesAPI = {
 
   testRemoteConnection: (url: string, apiKey?: string): Promise<boolean> =>
     ipcRenderer.invoke("test-remote-connection", url, apiKey),
+
+  probeRemoteAuthMode: (
+    url: string,
+  ): Promise<{ authMode: "token" | "oauth"; version: string | null }> =>
+    ipcRenderer.invoke("probe-remote-auth-mode", url),
+
+  remoteOAuthLogin: (): Promise<{ signedIn: true }> =>
+    ipcRenderer.invoke("remote-oauth-login"),
+
+  remoteOAuthLogout: (): Promise<{ signedIn: false }> =>
+    ipcRenderer.invoke("remote-oauth-logout"),
+
+  remoteOAuthSessionState: (): Promise<{ signedIn: boolean }> =>
+    ipcRenderer.invoke("remote-oauth-session-state"),
 
   testSshConnection: (
     host: string,
@@ -720,6 +739,8 @@ const hermesAPI = {
   gatewayStatus: (): Promise<boolean> => ipcRenderer.invoke("gateway-status"),
   dashboardStatus: (profile?: string): Promise<DashboardStatus> =>
     ipcRenderer.invoke("dashboard-status", profile),
+  freshDashboardWsUrl: (profile?: string): Promise<string> =>
+    ipcRenderer.invoke("fresh-dashboard-ws-url", profile),
   startDashboard: (profile?: string): Promise<DashboardStatus> =>
     ipcRenderer.invoke("start-dashboard", profile),
   stopDashboard: (profile?: string): Promise<boolean> =>

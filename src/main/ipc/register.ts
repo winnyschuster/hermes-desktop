@@ -118,10 +118,18 @@ import {
   resolvePendingClarify,
 } from "../hermes";
 import {
+  freshDashboardWebSocketUrl,
   getDashboardStatus,
   startDashboard,
   stopDashboard,
 } from "../dashboard";
+import {
+  clearRemoteOAuthSession,
+  connectionConfigAfterRemoteOAuthLogin,
+  openRemoteOAuthLogin,
+  probeRemoteAuthMode,
+  remoteOAuthSessionState,
+} from "../remote-oauth";
 import {
   startSshTunnel,
   ensureSshTunnel,
@@ -557,6 +565,14 @@ async function withRemoteDashboard<T>(
   dashboardOperation: () => Promise<T>,
   legacyOperation: () => Promise<T> | T,
 ): Promise<T> {
+  if (conn.remoteAuthMode === "oauth") {
+    if (conn.remoteChatTransport === "legacy") {
+      throw new Error(
+        "Legacy remote transport cannot authenticate to an OAuth gateway.",
+      );
+    }
+    return dashboardOperation();
+  }
   if (conn.remoteChatTransport === "legacy") return legacyOperation();
   try {
     return await dashboardOperation();
@@ -1195,6 +1211,8 @@ export function registerIpcHandlers(context: IpcContext): void {
         ...existing,
         mode,
         remoteUrl,
+        remoteAuthMode:
+          existing.remoteUrl === remoteUrl ? existing.remoteAuthMode : "auto",
         apiKey: resolveConnectionApiKeyUpdate(
           existing,
           mode,
@@ -1250,6 +1268,56 @@ export function registerIpcHandlers(context: IpcContext): void {
     "test-remote-connection",
     (_event, url: string, apiKey?: string) => testRemoteConnection(url, apiKey),
   );
+
+  ipcMain.handle("probe-remote-auth-mode", async (_event, url: string) => {
+    const result = await probeRemoteAuthMode(url);
+    const conn = getConnectionConfig();
+    if (
+      conn.mode === "remote" &&
+      conn.remoteUrl.trim() === url.trim() &&
+      conn.remoteAuthMode !== result.authMode
+    ) {
+      setConnectionConfig({ ...conn, remoteAuthMode: result.authMode });
+      notifyConnectionConfigChanged();
+    }
+    return result;
+  });
+
+  ipcMain.handle("remote-oauth-login", async () => {
+    const loginConfig = getConnectionConfig();
+    if (loginConfig.mode !== "remote" || !loginConfig.remoteUrl.trim()) {
+      throw new Error("Configure a Remote gateway URL before signing in.");
+    }
+    const result = await openRemoteOAuthLogin(
+      loginConfig.remoteUrl,
+      context.getMainWindow(),
+    );
+    setConnectionConfig(
+      connectionConfigAfterRemoteOAuthLogin(
+        loginConfig.remoteUrl,
+        getConnectionConfig(),
+      ),
+    );
+    notifyConnectionConfigChanged();
+    return result;
+  });
+
+  ipcMain.handle("remote-oauth-logout", async () => {
+    const conn = getConnectionConfig();
+    if (conn.mode !== "remote" || !conn.remoteUrl.trim()) {
+      throw new Error("Remote gateway is not configured.");
+    }
+    await clearRemoteOAuthSession(conn.remoteUrl);
+    return { signedIn: false };
+  });
+
+  ipcMain.handle("remote-oauth-session-state", () => {
+    const conn = getConnectionConfig();
+    if (conn.mode !== "remote" || !conn.remoteUrl.trim()) {
+      return { signedIn: false };
+    }
+    return remoteOAuthSessionState(conn.remoteUrl);
+  });
 
   ipcMain.handle(
     "test-ssh-connection",
@@ -1643,6 +1711,9 @@ export function registerIpcHandlers(context: IpcContext): void {
   // the current chat path while we validate the ordered event stream.
   ipcMain.handle("dashboard-status", (_event, profile?: string) =>
     getDashboardStatus(profile),
+  );
+  ipcMain.handle("fresh-dashboard-ws-url", (_event, profile?: string) =>
+    freshDashboardWebSocketUrl(profile),
   );
   ipcMain.handle("start-dashboard", (_event, profile?: string) =>
     startDashboard(profile),

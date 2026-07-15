@@ -103,6 +103,7 @@ interface DashboardConnection {
   baseUrl: string;
   wsUrl: string;
   token: string;
+  authMode?: "token" | "oauth";
   mode: "local" | "remote" | "ssh";
   profile?: string;
   pid?: number;
@@ -117,6 +118,7 @@ interface DashboardStatus {
   connection?: DashboardConnection;
   error?: string;
   logPath?: string;
+  needsOAuthLogin?: boolean;
 }
 
 /**
@@ -339,6 +341,7 @@ interface HermesAPI {
   getConnectionConfig: () => Promise<{
     mode: "local" | "remote" | "ssh";
     remoteUrl: string;
+    remoteAuthMode: "auto" | "token" | "oauth";
     remoteChatTransport: "auto" | "dashboard" | "legacy";
     sshChatTransport: "auto" | "dashboard" | "legacy";
     hasApiKey: boolean;
@@ -365,6 +368,7 @@ interface HermesAPI {
     callback: (config: {
       mode: "local" | "remote" | "ssh";
       remoteUrl: string;
+      remoteAuthMode: "auto" | "token" | "oauth";
       remoteChatTransport: "auto" | "dashboard" | "legacy";
       sshChatTransport: "auto" | "dashboard" | "legacy";
       hasApiKey: boolean;
@@ -388,6 +392,12 @@ interface HermesAPI {
     localPort: number,
   ) => Promise<boolean>;
   testRemoteConnection: (url: string, apiKey?: string) => Promise<boolean>;
+  probeRemoteAuthMode: (
+    url: string,
+  ) => Promise<{ authMode: "token" | "oauth"; version: string | null }>;
+  remoteOAuthLogin: () => Promise<{ signedIn: true }>;
+  remoteOAuthLogout: () => Promise<{ signedIn: false }>;
+  remoteOAuthSessionState: () => Promise<{ signedIn: boolean }>;
   testSshConnection: (
     host: string,
     port: number,
@@ -511,6 +521,7 @@ interface HermesAPI {
   restartGateway: (profile?: string) => Promise<boolean>;
   gatewayStatus: () => Promise<boolean>;
   dashboardStatus: (profile?: string) => Promise<DashboardStatus>;
+  freshDashboardWsUrl: (profile?: string) => Promise<string>;
   startDashboard: (profile?: string) => Promise<DashboardStatus>;
   stopDashboard: (profile?: string) => Promise<boolean>;
 

@@ -264,6 +264,16 @@ function Chat({
     const loadConnectionConfig = async (): Promise<void> => {
       try {
         const conn = await window.hermesAPI.getConnectionConfig();
+        let remoteAuthMode = conn.remoteAuthMode ?? "auto";
+        if (conn.mode === "remote" && conn.remoteUrl.trim()) {
+          try {
+            remoteAuthMode = (
+              await window.hermesAPI.probeRemoteAuthMode(conn.remoteUrl)
+            ).authMode;
+          } catch {
+            // Keep stored transport choice when public status is unreachable.
+          }
+        }
         if (!cancelled) {
           setConnectionMode(conn.mode);
           setRemoteMode(conn.mode !== "local");
@@ -272,7 +282,9 @@ function Chat({
               ? "auto"
               : conn.mode === "ssh"
                 ? (conn.sshChatTransport ?? "auto")
-                : (conn.remoteChatTransport ?? "auto"),
+                : remoteAuthMode === "oauth"
+                  ? "dashboard"
+                  : (conn.remoteChatTransport ?? "auto"),
           );
         }
       } catch {
@@ -295,7 +307,9 @@ function Chat({
           ? "auto"
           : conn.mode === "ssh"
             ? (conn.sshChatTransport ?? "auto")
-            : (conn.remoteChatTransport ?? "auto"),
+            : conn.remoteAuthMode === "oauth"
+              ? "dashboard"
+              : (conn.remoteChatTransport ?? "auto"),
       );
     });
     return (): void => {
