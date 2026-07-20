@@ -228,7 +228,11 @@ function Office({ visible, profile }: OfficeProps): React.JSX.Element {
   }, []);
 
   // Escape exits walk mode, or backs out of an interior to the city view.
+  // A rep panel (modal) owns Escape while it's open — its own listener closes
+  // it — so this handler stays detached until the modal is gone. Otherwise a
+  // single Escape would dismiss the modal *and* drop out of walk mode.
   useEffect(() => {
+    if (activeRepId) return;
     if (!visible || (!walkMode && location === "city")) return;
     const onKeyDown = (e: KeyboardEvent): void => {
       if (e.key !== "Escape") return;
@@ -237,7 +241,7 @@ function Office({ visible, profile }: OfficeProps): React.JSX.Element {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [visible, location, walkMode, exitWalkMode, exitToCity]);
+  }, [visible, location, walkMode, activeRepId, exitWalkMode, exitToCity]);
 
   // Bank ATM → the ATM representative menu (wallet actions; withdraw/deposit
   // coming soon), same modal machinery as the teller.

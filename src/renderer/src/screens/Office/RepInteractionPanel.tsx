@@ -105,11 +105,18 @@ function tokenBadge(symbol: string): {
 /**
  * Session cache of each agent's bank state. An agent has exactly one account,
  * so once we've seen its wallet we remember it (id/address/transactable) plus
- * its last portfolio, keyed by agent id for the life of the app process. This
- * lets the panel hydrate instantly when reopened or when switching back to an
- * agent, skip the wallet lookup on a "Check balance" refresh, and hide "Create
- * account" for an agent that already has one. In-memory only — no cloud wallet
- * data is persisted to disk (see wallet-token-balances).
+ * its last portfolio for the life of the app process. This lets the panel
+ * hydrate instantly when reopened or when switching back to an agent, skip the
+ * wallet lookup on a "Check balance" refresh, and hide "Create account" for an
+ * agent that already has one. In-memory only — no cloud wallet data is
+ * persisted to disk (see wallet-token-balances).
+ *
+ * The key is `${signed-in account id}::${agent id}`, so cached financial data
+ * can never cross a sign-out/relink: a different (or absent) account produces a
+ * different key, and the previous account's portfolio and wallet id are never
+ * read back for the relinked profile. A null key (no known account) is a cache
+ * miss on read and a no-op on write, so nothing is served or stored while
+ * signed out.
  */
 interface AgentBankCache {
   wallet: { id: string; address: string; canTransact: boolean } | null;
@@ -119,9 +126,17 @@ interface AgentBankCache {
 
 const bankCache = new Map<string, AgentBankCache>();
 
-function rememberBank(agentId: string, patch: Partial<AgentBankCache>): void {
-  const prev = bankCache.get(agentId) ?? { wallet: null, hasAccount: false };
-  bankCache.set(agentId, { ...prev, ...patch });
+function readBank(key: string | null): AgentBankCache | null {
+  return key ? (bankCache.get(key) ?? null) : null;
+}
+
+function rememberBank(
+  key: string | null,
+  patch: Partial<AgentBankCache>,
+): void {
+  if (!key) return;
+  const prev = bankCache.get(key) ?? { wallet: null, hasAccount: false };
+  bankCache.set(key, { ...prev, ...patch });
 }
 
 /**
@@ -148,6 +163,31 @@ export default function RepInteractionPanel({
   // Whether the selected agent is known to already have an account (from the
   // session cache or a completed action). Hides the redundant "Create account".
   const [hasAccount, setHasAccount] = useState(false);
+
+  // The signed-in Hermes account id, used to scope the wallet cache so cached
+  // financial data never survives a sign-out or relink. Null until resolved (or
+  // when signed out), which makes cache lookups miss and writes no-op.
+  const [accountId, setAccountId] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void window.hermesAPI
+      .getAccount()
+      .then((acc) => {
+        if (alive) setAccountId(acc?.user.id ?? null);
+      })
+      .catch(() => {
+        if (alive) setAccountId(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const cacheKey = useCallback(
+    (id: string | null): string | null =>
+      accountId && id ? `${accountId}::${id}` : null,
+    [accountId],
+  );
 
   // Drives the open transition: false on mount, flipped true on the next frame
   // so the backdrop fades and the card scales in. Escape closes the modal.
@@ -182,11 +222,12 @@ export default function RepInteractionPanel({
   // A different agent context invalidates any shown result — including
   // results still in flight — then rehydrates from the session cache: a known
   // portfolio renders instantly and a known account hides "Create account". A
-  // cold agent falls back to idle.
+  // cold agent (or an unresolved/absent account) falls back to idle. Re-runs
+  // once the account id resolves so the cache is read under the right scope.
   useEffect(() => {
     requestSeq.current += 1;
     setActiveAction(null);
-    const cached = agentId ? bankCache.get(agentId) : null;
+    const cached = readBank(cacheKey(agentId));
     setHasAccount(cached?.hasAccount ?? false);
     setState(
       cached?.portfolio
@@ -197,7 +238,7 @@ export default function RepInteractionPanel({
           }
         : { kind: "idle" },
     );
-  }, [agentId]);
+  }, [agentId, cacheKey]);
 
   const hintForStatus = useCallback(
     (status: "signed-out" | "unlinked" | "foreign"): ActionState => ({
@@ -216,16 +257,19 @@ export default function RepInteractionPanel({
     async (actionId: RepActionId): Promise<void> => {
       if (!agentId) return;
       const request = ++requestSeq.current;
+      // Cache key captured at the request's start so a late result caches under
+      // this request's account + agent, even after the picker moved on.
+      const key = cacheKey(agentId);
       // Apply a result only if this is still the latest request for the
       // currently selected agent.
       const apply = (next: ActionState): void => {
         if (requestSeq.current === request) setState(next);
       };
-      // Cache updates are keyed by this request's agent, so a late result still
-      // caches the right agent's data even after the picker moved on; the
+      // Cache updates are keyed by this request's account + agent, so a late
+      // result still caches the right data even after the picker moved on; the
       // hasAccount flag only touches the UI while this request is current.
       const remember = (patch: Partial<AgentBankCache>): void => {
-        rememberBank(agentId, patch);
+        rememberBank(key, patch);
         if (patch.hasAccount !== undefined && requestSeq.current === request) {
           setHasAccount(patch.hasAccount);
         }
@@ -266,7 +310,9 @@ export default function RepInteractionPanel({
         if (actionId === "checkBalance") {
           // Reuse the cached transactable wallet id so a refresh skips the
           // wallet-lookup round-trip; only fetch the wallet list when unknown.
-          const cached = bankCache.get(agentId);
+          // The key is account-scoped, so a relinked profile never reuses the
+          // previous account's wallet id.
+          const cached = readBank(key);
           let walletId = cached?.wallet?.canTransact ? cached.wallet.id : null;
           if (!walletId) {
             const res = await window.hermesAPI.syncWallets(agentId);
@@ -355,7 +401,7 @@ export default function RepInteractionPanel({
         apply({ kind: "error", message: (err as Error).message });
       }
     },
-    [agentId, hintForStatus, t],
+    [agentId, cacheKey, hintForStatus, t],
   );
 
   const selectedAgent = agents.find((a) => a.id === agentId) ?? null;
